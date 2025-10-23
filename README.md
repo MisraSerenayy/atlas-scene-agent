@@ -33,7 +33,6 @@ The workflow shows how an AI-generated render is converted into structured desig
   <em>Example 2 — Interior Scene: From render → top view abstraction → JSON visualization via AI agent.</em>
 </p>
 
----
 
 
 ---
@@ -103,6 +102,7 @@ Run blender_livesync.py inside Blender’s scripting panel.
 Any change in live_scene.json updates the 3D view automatically.
 
 🧩 Current Functionality (MVP)
+
 The AI agent understands natural language prompts such as
 “Add an object named castle_ruin to the north” or “Mirror the forest on the left.”
 
