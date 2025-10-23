@@ -11,7 +11,7 @@ This repository hosts the MVP for the **ATLAS Scene Design Agent**, combining:
 ---
 
 ## Features
-- **Natural language control:** Ask the agent to add, mirror, or align objects.
+- **Natural language control:** Ask the agent to add, mirror, move, align, etc. objects.
 - **Interactive editor:** Drag and resize shapes on a grid-based 2D layout.
 - **Live synchronization:** Edits instantly reflected in Blender.
 - **SVG + JSON generation:** The agent outputs schematic top-down plans directly from text.
@@ -33,11 +33,41 @@ The workflow shows how an AI-generated render is converted into structured desig
   <em>Example 2 — Interior Scene: From render → top view abstraction → JSON visualization via AI agent.</em>
 </p>
 
+<img width="1733" height="908" alt="Ekran görüntüsü 2025-10-23 132121" src="https://github.com/user-attachments/assets/2339512e-a090-4bf7-b0c9-d33776cd93d0" />
+<p align="center">
+  <br>
+  <em>Interface</em>
+</p>
 
+---
+🧩 Current Functionality (MVP)
+
+The AI agent understands natural language prompts such as
+“Add an object named castle_ruin to the north” or “Mirror the forest on the left.”
+
+From text, it produces both a JSON scene file and an SVG layout (top-down schematic).
+
+It can load an existing JSON (for example generated from a render via ChatGPT) and
+edit or expand that scene by adding new objects or changing dimensions.
+
+Users can then visualize and refine the scene interactively in the 2D editor.
+
+The Flask server synchronizes all updates to live_scene.json,
+enabling real-time visualization in Blender.
+---
+## 🎥 Demo
+
+
+https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
+<p align="center">
+  <br>
+  <em>Real-time 2D layout editor with AI-assisted scene generation and Blender live-sync.</em>
+</p>
 
 ---
 
 ## Project Structure
+
 ```plaintext
 atlas-scene-agent/
 │
@@ -101,45 +131,24 @@ You can paste a JSON from the examples folder and edit the scene by dragging or 
 Run blender_livesync.py inside Blender’s scripting panel.
 Any change in live_scene.json updates the 3D view automatically.
 
-🧩 Current Functionality (MVP)
-
-The AI agent understands natural language prompts such as
-“Add an object named castle_ruin to the north” or “Mirror the forest on the left.”
-
-From text, it produces both a JSON scene file and an SVG layout (top-down schematic).
-
-It can load an existing JSON (for example generated from a render via ChatGPT) and
-edit or expand that scene by adding new objects or changing dimensions.
-
-Users can then visualize and refine the scene interactively in the 2D editor.
-
-The Flask server synchronizes all updates to live_scene.json,
-enabling real-time visualization in Blender.
 
 🧪 Example Demo
 
 To try the included demo:
 
-Start the server.
+1. Start the server.
 
-Open the web editor.
+2. Open the web editor.
 
-Copy-Paste an example JSON.
+3. Copy-Paste an example JSON.
 
-Click Load JSON.
+4. Click Load JSON.
 
-Interact with the 2D view to edit the scene.
+5. Interact with the 2D view to edit the scene.
 
-Click Publish to write live_scene.json and preview the scene in Blender.
-
-## 🎥 Demo
+6. Click Publish to write live_scene.json and preview the scene in Blender.
 
 
-https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
-<p align="center">
-  <br>
-  <em>Real-time 2D layout editor with AI-assisted scene generation and Blender live-sync.</em>
-</p>
 
 🪄 Roadmap
 
@@ -152,7 +161,8 @@ https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
  Multi-user collaboration and persistent history.
 
 
-🧠 Credits
+
+Credits
 
 Developed by Mısra Serenay Özgök Genç
 ATLAS Collaboration, 2025
