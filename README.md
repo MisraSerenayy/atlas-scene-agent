@@ -39,6 +39,7 @@ The workflow shows how an AI-generated render is converted into structured desig
 ---
 
 ## 🗂 Project Structure
+```plaintext
 atlas-scene-agent/
 │
 ├── ai_agent.py # Core logic (prompt interpretation and SVG/JSON generation)
@@ -61,7 +62,7 @@ atlas-scene-agent/
 │
 ├── blender_livesync.py # Blender script watching live_scene.json
 └── live_scene.json # Shared file updated by server and Blender
-
+```
 
 ---
 
@@ -72,12 +73,12 @@ atlas-scene-agent/
 git clone https://github.com/MisraSerenayy/atlas-scene-agent.git
 cd atlas-scene-agent
 ```
-2. Create environment
+### 2. Create environment
 ```bash
 conda activate "your_env_name"  # or python -m venv venv
 pip install -r requirements.txt
 ```
-3. Add your OpenAI API key
+### 3. Add your OpenAI API key
 Create a file named .env in the project root:
 ```bash
 OPENAI_API_KEY=sk-yourkey
@@ -87,17 +88,17 @@ Do not commit this file. Git ignores it automatically.
 
 If you prefer, you can copy .env.example and rename it to .env.
 
-4. Run the server
+### 4. Run the server
 ```bash
 python server.py
 ```
 This writes and updates live_scene.json in real time.
 
-5. Open the editor
+### 5. Open the editor
 Open plan_editor.html in your browser.
 You can paste a JSON from the examples folder and edit the scene by dragging or interacting with the AI agent.
 
-6. Blender live-sync
+### 6. Blender live-sync
 Run blender_livesync.py inside Blender’s scripting panel.
 Any change in live_scene.json updates the 3D view automatically.
 
@@ -149,8 +150,6 @@ Click Publish to write live_scene.json and preview the scene in Blender.
 
  Multi-user collaboration and persistent history.
 
-📜 License
-No license yet — private collaboration with ATLAS team.
 
 🧠 Credits
 Developed by Mısra Serenay Özgök Genç
