@@ -40,6 +40,7 @@ The workflow shows how an AI-generated render is converted into structured desig
 </p>
 
 ---
+
 🧩 Current Functionality (MVP)
 
 The AI agent understands natural language prompts such as
@@ -54,7 +55,9 @@ Users can then visualize and refine the scene interactively in the 2D editor.
 
 The Flask server synchronizes all updates to live_scene.json,
 enabling real-time visualization in Blender.
+
 ---
+
 ## 🎥 Demo
 
 
@@ -130,6 +133,7 @@ You can paste a JSON from the examples folder and edit the scene by dragging or 
 ### 6. Blender live-sync
 Run blender_livesync.py inside Blender’s scripting panel.
 Any change in live_scene.json updates the 3D view automatically.
+
 ---
 
 🧪 Example Demo
