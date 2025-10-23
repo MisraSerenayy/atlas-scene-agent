@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "units": "px",
+  "canvas": { "width": 1200, "height": 800, "viewBox": [0, 0, 1200, 800] },
+  "objects": {
+    "castle_ruin": {
+      "label": "CastleRuin",
+      "primitive": "cube",
+      "x": 470,
+      "y": 60,
+      "w": 260,
+      "h": 90,
+      "height": 6.0
+    },
+    "forest_w": {
+      "label": "ForestWest",
+      "primitive": "cube",
+      "x": 60,
+      "y": 120,
+      "w": 280,
+      "h": 240,
+      "height": 8.0
+    },
+    "forest_e": {
+      "label": "ForestEast",
+      "primitive": "cube",
+      "x": 860,
+      "y": 120,
+      "w": 280,
+      "h": 240,
+      "height": 8.0
+    },
+    "ruin_flank_w": {
+      "label": "RuinFlankWest",
+      "primitive": "cube",
+      "x": 360,
+      "y": 240,
+      "w": 190,
+      "h": 210,
+      "height": 2.5
+    },
+    "ruin_flank_e": {
+      "label": "RuinFlankEast",
+      "primitive": "cube",
+      "x": 650,
+      "y": 240,
+      "w": 190,
+      "h": 210,
+      "height": 2.5
+    },
+    "magical_door": {
+      "label": "MagicalDoor",
+      "primitive": "cube",
+      "x": 565,
+      "y": 290,
+      "w": 70,
+      "h": 150,
+      "height": 0.5
+    },
+    "statue_left": {
+      "label": "Statue_Left",
+      "primitive": "cube",
+      "x": 520,
+      "y": 300,
+      "w": 30,
+      "h": 130,
+      "height": 2.0
+    },
+    "statue_right": {
+      "label": "Statue_Right",
+      "primitive": "cube",
+      "x": 650,
+      "y": 300,
+      "w": 30,
+      "h": 130,
+      "height": 2.0
+    },
+    "altar_w": {
+      "label": "Altar_West",
+      "primitive": "cube",
+      "x": 445,
+      "y": 410,
+      "w": 90,
+      "h": 40,
+      "height": 1.0
+    },
+    "altar_e": {
+      "label": "Altar_East",
+      "primitive": "cube",
+      "x": 665,
+      "y": 410,
+      "w": 90,
+      "h": 40,
+      "height": 1.0
+    },
+    "altar_s_w": {
+      "label": "Altar_SW",
+      "primitive": "cube",
+      "x": 470,
+      "y": 520,
+      "w": 80,
+      "h": 60,
+      "height": 1.0
+    },
+    "altar_s_e": {
+      "label": "Altar_SE",
+      "primitive": "cube",
+      "x": 650,
+      "y": 520,
+      "w": 80,
+      "h": 60,
+      "height": 1.0
+    },
+    "altar_n_w": {
+      "label": "Altar_NW",
+      "primitive": "cube",
+      "x": 470,
+      "y": 250,
+      "w": 80,
+      "h": 60,
+      "height": 1.0
+    },
+    "altar_n_e": {
+      "label": "Altar_NE",
+      "primitive": "cube",
+      "x": 650,
+      "y": 250,
+      "w": 80,
+      "h": 60,
+      "height": 1.0
+    },
+    "column_sw": {
+      "label": "Column_SW",
+      "primitive": "cube",
+      "x": 250,
+      "y": 560,
+      "w": 140,
+      "h": 40,
+      "height": 0.6
+    },
+    "column_se": {
+      "label": "Column_SE",
+      "primitive": "cube",
+      "x": 820,
+      "y": 560,
+      "w": 140,
+      "h": 40,
+      "height": 0.6
+    },
+    "path_band": {
+      "label": "Path",
+      "primitive": "cube",
+      "x": 565,
+      "y": 460,
+      "w": 70,
+      "h": 190,
+      "height": 0.05
+    }
+  }
+}

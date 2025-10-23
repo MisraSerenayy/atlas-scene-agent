@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "units": "px",
+  "canvas": { "width": 800, "height": 800, "viewBox": [0, 0, 800, 800] },
+  "room": {
+    "outer_wall": { "type": "rect", "x": 80, "y": 80, "w": 640, "h": 640, "rx": 6 },
+    "inner_area": { "type": "rect", "x": 120, "y": 120, "w": 560, "h": 560, "rx": 4 },
+    "door": {
+      "type": "compound",
+      "parts": [
+        { "type": "rect", "id": "door_leaf_edge", "x": 365, "y": 680, "w": 70, "h": 16 },
+        { "type": "arc", "id": "door_swing", "cx": 400, "cy": 696, "r": 70, "start": 0, "end": 180, "largeArc": false, "sweep": 0 }
+      ],
+      "hinge": { "x": 365, "y": 696 }
+    },
+    "window_top": { "type": "rect", "x": 290, "y": 80, "w": 220, "h": 16 }
+  },
+  "objects": [
+    { "id": "rug", "label": "Rug", "type": "rect", "x": 180, "y": 260, "w": 440, "h": 360, "rx": 20, "height": 0.02 },
+
+    { "id": "sofa_main", "label": "Sofa", "type": "rect", "x": 230, "y": 180, "w": 340, "h": 100, "rx": 10, "height": 0.85,
+      "extras": [{ "type": "rect", "role": "backrest", "x": 230, "y": 172, "w": 340, "h": 16 }]
+    },
+
+    { "id": "armchair_left", "label": "Armchair", "type": "rect", "x": 150, "y": 320, "w": 150, "h": 110, "rx": 12, "height": 0.85 },
+
+    { "id": "coffee_table", "label": "Coffee Table", "type": "circle", "cx": 400, "cy": 440, "r": 85, "height": 0.42 },
+
+    { "id": "pouf_left", "label": "Pouf", "type": "circle", "cx": 220, "cy": 520, "r": 55, "height": 0.40 },
+
+    { "id": "ottoman_br", "label": "Ottoman", "type": "rect", "x": 520, "y": 560, "w": 120, "h": 90, "rx": 16, "height": 0.45 },
+
+    { "id": "side_table", "label": "Side Table", "type": "circle", "cx": 610, "cy": 330, "r": 38, "height": 0.55 },
+
+    { "id": "lamp_right_shade", "label": "Lamp (Right)", "type": "circle", "cx": 610, "cy": 295, "r": 22, "belongs_to": "side_table", "height": 0.65 },
+
+    { "id": "bookshelf_right", "label": "Bookshelf", "type": "rect", "x": 660, "y": 250, "w": 20, "h": 280, "rx": 2, "height": 1.90 },
+
+    { "id": "plant_A", "label": "Plant A", "type": "circle", "cx": 205, "cy": 220, "r": 34, "height": 1.50,
+      "base": { "type": "rect", "x": 195, "y": 250, "w": 20, "h": 20 }
+    },
+
+    { "id": "plant_B", "label": "Plant B", "type": "circle", "cx": 150, "cy": 620, "r": 42, "height": 0.80 },
+
+    { "id": "plant_C", "label": "Plant C", "type": "circle", "cx": 600, "cy": 390, "r": 26, "height": 0.90 },
+
+    { "id": "lamp_L", "label": "Lamp (Left Tripod)", "type": "circle", "cx": 320, "cy": 240, "r": 16, "height": 1.60 },
+
+    { "id": "lamp_R", "label": "Lamp (Right Tripod)", "type": "circle", "cx": 680, "cy": 420, "r": 16, "height": 1.60 }
+  ],
+  "meta": {
+    "note": "Heights in meters; positions/sizes in pixels.",
+    "approx_scale_bar": { "anchor": [130, 660], "length_px": 100, "label": "~1 m (approx.)" }
+  }
+}
