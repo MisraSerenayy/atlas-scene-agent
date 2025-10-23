@@ -71,15 +71,18 @@ atlas-scene-agent/
 ```bash
 git clone https://github.com/MisraSerenayy/atlas-scene-agent.git
 cd atlas-scene-agent
+```
 2. Create environment
 ```bash
 conda activate "your_env_name"  # or python -m venv venv
 pip install -r requirements.txt
+```
 3. Add your OpenAI API key
 Create a file named .env in the project root:
 ```bash
 OPENAI_API_KEY=sk-yourkey
 OPENAI_AGENT_MODEL=gpt-4.1
+```
 Do not commit this file. Git ignores it automatically.
 
 If you prefer, you can copy .env.example and rename it to .env.
@@ -87,6 +90,7 @@ If you prefer, you can copy .env.example and rename it to .env.
 4. Run the server
 ```bash
 python server.py
+```
 This writes and updates live_scene.json in real time.
 
 5. Open the editor
