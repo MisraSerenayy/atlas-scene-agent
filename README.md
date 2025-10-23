@@ -19,7 +19,7 @@ This repository hosts the MVP for the **ATLAS Scene Design Agent**, combining:
 - **Demo examples:** “magical_forest” and “room” scenes with AI-generated assets.
 ---
 
-## 🧭 Workflow Overview
+## Workflow Overview
 
 The workflow shows how an AI-generated render is converted into structured design data (SVG + JSON) and visualized in the real-time editor.
 
@@ -38,7 +38,7 @@ The workflow shows how an AI-generated render is converted into structured desig
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 ```plaintext
 atlas-scene-agent/
 │
@@ -66,7 +66,7 @@ atlas-scene-agent/
 
 ---
 
-## ⚙️ Setup
+## Setup
 
 ### 1. Clone and enter
 ```bash
@@ -117,6 +117,7 @@ The Flask server synchronizes all updates to live_scene.json,
 enabling real-time visualization in Blender.
 
 🧪 Example Demo
+
 To try the included demo:
 
 Start the server.
@@ -135,14 +136,13 @@ Click Publish to write live_scene.json and preview the scene in Blender.
 
 
 https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
-
-
 <p align="center">
   <br>
   <em>Real-time 2D layout editor with AI-assisted scene generation and Blender live-sync.</em>
 </p>
 
 🪄 Roadmap
+
  Inline vision module to generate SVG/JSON directly from RGB + depth renders.
 
  Expanded agent command set (stairs, walls, etc.).
@@ -153,5 +153,6 @@ https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
 
 
 🧠 Credits
+
 Developed by Mısra Serenay Özgök Genç
 ATLAS Collaboration, 2025
