@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
 from pathlib import Path
 import json, os, sys, traceback, time
-from ATLAS_FINAL_WITH_IMPORTER import run_prompt  # fixed filename
+from ai_agent import run_prompt
 
-WATCH_PATH = r"C:\ATLAS\live_scene.json"   # must match blender_livesync.py
+
+WATCH_PATH = r"C:\GITCLONE\atlas-scene-agent\live_scene.json"
+
 APP_PORT = 5544
 
 app = Flask(__name__)

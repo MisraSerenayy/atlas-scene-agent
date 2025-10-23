@@ -1,7 +1,7 @@
 # blender_livesync.py — drop this into Blender's Text Editor and "Run Script" once
 import bpy, json, os, time, math
 
-WATCH_PATH = r"C:\ATLAS\live_scene.json"   # <- change if you prefer a different path
+WATCH_PATH = r"C:\GITCLONE\atlas-scene-agent\live_scene.json"# <- change if you prefer a different path
 CHECK_EVERY = 0.5                          # seconds
 _last_mtime = None
 _last_sig = None 

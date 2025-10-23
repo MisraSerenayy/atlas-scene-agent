@@ -3664,7 +3664,8 @@ def _resolve_canvas_and_scale(plan):
 # === Live state & writer (put near the top of your Python file) ===
 
 # Live state & writer (keep where you already placed it)
-WATCH_PATH = r"C:\ATLAS\live_scene.json"   # MUST match blender_livesync.py
+WATCH_PATH = r"C:\GITCLONE\atlas-scene-agent\live_scene.json"
+
 STATE = {
     "grid_w": 40.0,
     "grid_h": 30.0,
