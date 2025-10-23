@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Universal Plan JSON Editor — Drag, Resize & LiveSync</title>
+  <style>
+    :root {
+      --ui-border: #dedede;
+      --ui-bg: #fafafa;
+      --ui-accent: #2a6fdb;
+      --obj-fill: #cfe7ff;
+      --obj-stroke: #2a6fdb;
+      --label: #1f3a64;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    #wrap { display: grid; grid-template-columns: 1fr 360px; gap: 12px; align-items: start; }
+    #stage { border: 1px solid var(--ui-border); border-radius: 10px; background: white; padding: 10px; overflow: auto; }
+    #panel { border: 1px solid var(--ui-border); border-radius: 10px; padding: 12px; background: var(--ui-bg); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    textarea { width: 100%; height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    button { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--ui-border); background: white; cursor: pointer; }
+    button.primary { border-color: var(--ui-accent); color: white; background: var(--ui-accent); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    label { font-size: 12px; color: #333; display: flex; flex-direction: column; gap: 4px; }
+    input[type="number"], input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid var(--ui-border); border-radius: 8px; background: white; }
+    .obj { cursor: move; }
+    .obj:hover { opacity: 0.97; }
+    .hint { color: #666; font-size: 12px; }
+    .sep { height: 1px; background: var(--ui-border); margin: 10px 0; }
+    .handle { fill: white; stroke: var(--ui-accent); stroke-width: 1; pointer-events: all; }
+    .handle.corner { cursor: nwse-resize; }
+    .handle.h-edge { cursor: ew-resize; }
+    .handle.v-edge { cursor: ns-resize; }
+    #liveHint { margin-top: 6px; min-height: 1em; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><!-- SVG injected here --></div>
+  <div id="panel">
+    <h1>Plan Editor</h1>
+
+    <div class="hint">Paste your plan JSON then click <b>Load JSON</b>. Drag or resize shapes; everything snaps to the grid. Use LiveSync to push updates to Blender.</div>
+
+    <div class="sep"></div>
+    <div><b>Load JSON</b></div>
+    <textarea id="jsonIn" placeholder='Paste your plan JSON here...'></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="loadBtn" class="primary">Load JSON</button>
+      <button id="resetBtn">Reset View</button>
+    </div>
+
+    <div class="sep"></div>
+    <div><b>View & Grid</b></div>
+    <div class="row" style="margin-top:8px">
+      <label>Pixels per unit (auto-detected)
+        <input id="ppm" type="number" step="1" min="1" />
+      </label>
+      <label>Grid size (in plan units)
+        <input id="gridStep" type="number" step="0.1" />
+      </label>
+    </div>
+
+    <div class="sep"></div>
+    <div><b>LiveSync</b></div>
+    <div class="row" style="margin-top:8px">
+      <label>POST URL
+        <input id="liveUrl" type="text" value="http://127.0.0.1:5544/publish" />
+      </label>
+      <label>Auto-publish
+        <input id="liveAuto" type="checkbox" checked />
+      </label>
+    </div>
+    <div class="sep"></div>
+    <div><b>Agent Chat</b></div>
+    <div class="row" style="margin-top:8px">
+      <textarea id="agentIn" placeholder="e.g., mirror A across B; place columns around B"></textarea>
+      <button id="agentBtn" class="primary">Ask Agent</button>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <button id="publishBtn" class="primary">Publish to Blender</button>
+      <button id="copyOutBtn">Copy Edited JSON</button>
+    </div>
+    <div class="hint" id="liveHint">Ready.</div>
+
+    <div class="sep"></div>
+    <div><b>Export</b></div>
+    <div class="row" style="margin-top:8px">
+      <button id="exportBtn">Export JSON</button>
+      <button id="selectAllBtn">Select All</button>
+    </div>
+    <textarea id="out" placeholder="Edited plan will appear here..."></textarea>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- State ----------
+  let model = null;
+  let units = "m";
+  let pxPerUnit = 30;
+  let gridStepUnits = 0.5;
+  let canvasW_units = 60;
+  let canvasH_units = 40;
+  let pxPerMeter = null;
+  let svg, gContent;
+
+
+
+  // ---------- DOM ----------
+  const stage = document.getElementById("stage");
+  const jsonIn = document.getElementById("jsonIn");
+  const loadBtn = document.getElementById("loadBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const ppmInput = document.getElementById("ppm");
+  const gridInput = document.getElementById("gridStep");
+  const exportBtn = document.getElementById("exportBtn");
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const out = document.getElementById("out");
+
+  const liveUrlEl = document.getElementById("liveUrl");
+  const liveAutoEl = document.getElementById("liveAuto");
+  const copyOutBtn = document.getElementById("copyOutBtn");
+  const liveHintEl = document.getElementById("liveHint");
+  const publishBtn = document.getElementById("publishBtn");
+  function syncJsonPane(){ if (model) jsonIn.value = JSON.stringify(model, null, 2); }
+
+  function debounce(fn, ms=140){ let t=null; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} }
+  const liveUrlInput = () => liveUrlEl.value.trim();
+  const liveAutoInput = () => liveAutoEl.checked;
+  const agentIn  = document.getElementById("agentIn");
+  const agentBtn = document.getElementById("agentBtn");
+  function normalizeForPublish(m){
+    const s = JSON.parse(JSON.stringify(m));
+
+    // canvas meters -> grid_w/h for Blender watcher
+    if (s.canvas && s.canvas.width_m && s.canvas.height_m){
+      s.grid_w = s.grid_w ?? s.canvas.width_m;
+      s.grid_h = s.grid_h ?? s.canvas.height_m;
+    }
+
+    // objects → dict with UPPERCASE keys
+    if (Array.isArray(s.objects)){
+      const dict = {};
+      s.objects.forEach((o,i)=>{
+        const key = (o.label || o.id || `OBJ_${i+1}`).toString().toUpperCase();
+        const { id, label, ...rest } = o;
+        dict[key] = rest;
+      });
+      s.objects = dict;
+    } else if (s.objects && typeof s.objects === "object") {
+      const dict = {};
+      Object.entries(s.objects).forEach(([k,v])=>{
+        dict[String(k).toUpperCase()] = v;
+      });
+      s.objects = dict;
+    }
+    return s;
+  }
+
+  function objsToDict(spec){
+    const s = JSON.parse(JSON.stringify(spec || {}));
+    let objs = s.objects || {};
+    if (Array.isArray(objs)){
+      const d = {};
+      objs.forEach((o,i)=>{
+        const k = (o.label || o.id || `OBJ_${i+1}`).toString().toUpperCase();
+        const { id, label, ...rest } = o;
+        d[k] = rest;
+      });
+      objs = d;
+    } else if (objs && typeof objs === "object"){
+      const d = {};
+      Object.entries(objs).forEach(([k,v])=>{
+        d[String(k).toUpperCase()] = v;
+      });
+      objs = d;
+    }
+    return { ...s, objects: objs };
+  }
+
+  function mergeSpecs(base, delta){
+    const B = objsToDict(base || {});
+    const D = objsToDict(delta || {});
+
+    // map existing keys UPPER -> original key (preserve casing if present)
+    const existingKeyByUpper = {};
+    Object.keys(B.objects || {}).forEach(k => { existingKeyByUpper[k.toUpperCase()] = k; });
+
+    const out = JSON.parse(JSON.stringify(B));
+    out.grid_w = D.grid_w ?? B.grid_w;
+    out.grid_h = D.grid_h ?? B.grid_h;
+    out.canvas = { ...(B.canvas || {}), ...(D.canvas || {}) };
+
+    // start from base objects
+    out.objects = { ...(B.objects || {}) };
+
+    // apply delta by uppercase key
+    for (const [k, dObj] of Object.entries(D.objects || {})) {
+      const KU = String(k).toUpperCase();
+      const targetKey = existingKeyByUpper[KU] || KU; // reuse base casing if present
+
+      if (dObj == null) {           // support deletions
+        delete out.objects[targetKey];
+        continue;
+      }
+
+      const bObj = out.objects[targetKey] || {};
+      out.objects[targetKey] = {
+        ...bObj,
+        ...dObj,
+        primitive: dObj.primitive ?? bObj.primitive ?? "cube",
+      };
+    }
+
+    out._source = D._source || B._source || "editor";
+    return out;
+  }
+
+// plan_editor_fixed.html
+agentBtn.addEventListener("click", async () => {
+  const prompt = (agentIn.value || "").trim();
+  if (!prompt) { alert("Type a command."); return; }
+// use the current in-memory scene
+  const sceneModel = normalizeForPublish(model || {});
+
+  liveHintEl.textContent = "Calling agent...";
+  try {
+    const res = await fetch("http://127.0.0.1:5544/agent", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, model: sceneModel })
+    });
+    const data = await res.json();
+    if (!res.ok || data.ok === false) throw new Error(data.error || "Agent failed");
+
+    if (data.spec) {
+      const s = { ...data.spec };
+
+      // Normalize scene units so grid doesn't explode
+      if (!s.units || s.units !== "m") {
+        if (typeof s.grid_w === "number" && typeof s.grid_h === "number") {
+          s.units = "m";
+          s.canvas = { width_m: s.grid_w, height_m: s.grid_h, origin: "top-left" };
+          if (typeof s.grid_size_m !== "number") s.grid_size_m = 0.5; // snap
+        }
+      }
+      const merged = mergeSpecs(model, s);
+      jsonIn.value = JSON.stringify(merged, null, 2);
+      loadModel(merged);
+      publishLiveSyncDebounced();
+    }
+
+
+    // Optional: show preview elsewhere if you want
+    // if (data.svg_text) previewEl.innerHTML = data.svg_text;
+
+    liveHintEl.textContent = `Agent OK → wrote ${data.objects} objects`;
+  } catch (e) {
+    liveHintEl.textContent = "Agent error: " + e.message;
+  }
+});
+
+
+  publishBtn.addEventListener("click", async () => {
+    if (!model) { alert("Load a JSON first."); return; }
+    try {
+      const url = liveUrlInput() || "http://127.0.0.1:5544/publish";
+      const payload = { ...normalizeForPublish(model), _source: "editor" };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || (data && data.ok === false)) throw new Error((data && data.error) || "Publish failed");
+      alert(`Published ${data.objects ?? "?"} object(s).\n${data.written ?? ""}`);
+    } catch (err) {
+      alert("Publish error: " + err.message);
+    }
+  });
+
+
+  async function publishLiveSync(){
+    if (!model) return;
+    const url = liveUrlInput();
+    if (!url) return;
+    try {
+      const payload = { ...normalizeForPublish(model), _source: "editor" };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(()=>({}));
+      if (res.ok && data && (data.ok || data.path)) {
+        liveHintEl.textContent = `Synced → ${data.written || data.path || "OK"}`;
+      } else {
+        liveHintEl.textContent = `LiveSync error: ${data.error || res.status}`;
+      }
+    } catch (err) {
+      liveHintEl.textContent = "LiveSync failed: " + err.message;
+    }
+  }
+
+  const publishLiveSyncDebounced = debounce(() => {
+    if (liveAutoInput()) publishLiveSync();
+  }, 160);
+
+  copyOutBtn.addEventListener("click", () => {
+    if (!model) return;
+    out.value = JSON.stringify(model, null, 2);
+    out.focus(); out.select(); document.execCommand("copy");
+    liveHintEl.textContent = "Edited JSON copied.";
+  });
+
+  loadBtn.addEventListener("click", () => {
+    try {
+      const parsed = JSON.parse(jsonIn.value);
+      loadModel(parsed);
+    } catch (err) {
+      alert("Invalid JSON: " + err.message);
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    draw();
+  });
+
+  ppmInput.addEventListener("change", () => {
+    pxPerUnit = +ppmInput.value || pxPerUnit;
+    draw();
+  });
+  gridInput.addEventListener("change", () => {
+    gridStepUnits = +gridInput.value || gridStepUnits;
+    draw();
+  });
+
+  exportBtn.addEventListener("click", () => {
+    if (!model) return;
+    out.value = JSON.stringify(model, null, 2);
+  });
+
+  selectAllBtn.addEventListener("click", () => {
+    out.focus();
+    out.select();
+  });
+
+  // ---------- Detection Helpers ----------
+  function approxPxPerMeter(plan) {
+    const meta = (plan.meta || {});
+    const sb = meta.approx_scale_bar || {};
+    const px = Number(sb.length_px);
+    return Number.isFinite(px) && px > 0 ? px : null;
+  }
+
+  function detectUnitsAndCanvas(plan) {
+    const cv = plan.canvas || {};
+    if ('width_m' in cv && 'height_m' in cv) {
+      units = "m";
+      canvasW_units = Number(cv.width_m) || 8.0;
+      canvasH_units = Number(cv.height_m) || 8.0;
+    } else {
+      units = "px";
+      if ('width' in cv && 'height' in cv) {
+        canvasW_units = Number(cv.width) || 800;
+        canvasH_units = Number(cv.height) || 800;
+      } else {
+        const vb = cv.viewBox || cv.viewbox;
+        if (Array.isArray(vb) && vb.length === 4) {
+          canvasW_units = Number(vb[2]) || 800;
+          canvasH_units = Number(vb[3]) || 800;
+        } else {
+          canvasW_units = 800;
+          canvasH_units = 800;
+        }
+      }
+    }
+
+    if (units === "m") {
+      pxPerUnit = Math.max(6, Math.min(40, Math.floor(900 / Math.max(canvasW_units, canvasH_units))));
+    } else {
+      pxPerUnit = 1;
+    }
+
+    if (units === "m") {
+      gridStepUnits = Number(plan.grid_size_m) || 0.5;
+    } else {
+      pxPerMeter = approxPxPerMeter(plan);
+      if (pxPerMeter && Number(plan.grid_size_m)) {
+        gridStepUnits = plan.grid_size_m * pxPerMeter;
+      } else {
+        gridStepUnits = 50;
+      }
+    }
+
+    ppmInput.value = pxPerUnit;
+    gridInput.value = gridStepUnits;
+  }
+
+  // ---------- Geometry Helpers ----------
+  const u2px = v => v * pxPerUnit;
+  const px2u = v => v / pxPerUnit;
+  const snap = (v, step) => Math.round(v / step) * step;
+  const clampSize = v => Math.max(v, (units === "m" ? 0.1 : 1));
+
+  function rectFromCenter(cx, cy, w, h) {
+    return { x: cx - w/2, y: cy - h/2, w, h };
+  }
+
+  function bboxFromPoints(points) {
+    const xs = points.map(p => p[0]);
+    const ys = points.map(p => p[1]);
+    const minx = Math.min(...xs), maxx = Math.max(...xs);
+    const miny = Math.min(...ys), maxy = Math.max(...ys);
+    return { x: minx, y: miny, w: maxx - minx, h: maxy - miny, cx: (minx+maxx)/2, cy: (miny+maxy)/2 };
+  }
+
+  function parsePoints(o) {
+    const pts = o.points;
+    if (typeof pts === "string") {
+      const arr = [];
+      pts.trim().split(/\s+/).forEach(tok => {
+        const [a,b] = tok.split(",").map(Number);
+        if (Number.isFinite(a) && Number.isFinite(b)) arr.push([a,b]);
+      });
+      return arr.length ? arr : null;
+    } else if (Array.isArray(pts)) {
+      const arr = [];
+      pts.forEach(p => {
+        if (Array.isArray(p) && p.length === 2 && Number.isFinite(+p[0]) && Number.isFinite(+p[1])) {
+          arr.push([+p[0], +p[1]]);
+        }
+      });
+      return arr.length ? arr : null;
+    }
+    return null;
+  }
+
+  function fmtPointsLike(original, points) {
+    if (typeof original === "string") {
+      return points.map(([x,y]) => `${roundPretty(x)},${roundPretty(y)}`).join(" ");
+    }
+    return points.map(([x,y]) => [roundPretty(x), roundPretty(y)]);
+  }
+
+  function roundPretty(v) {
+    if (units === "m") return +v.toFixed(3);
+    const r = +v.toFixed(2);
+    return Math.abs(r - Math.round(r)) < 1e-6 ? Math.round(r) : r;
+  }
+
+  // ---------- Shape Adapters ----------
+  function objectToDisplayRect(o) {
+    const t = (o.type || o.shape || "").toLowerCase();
+
+    if ("primitive" in o && ["x","y","w","h"].every(k => k in o)) {
+      return rectFromCenter(Number(o.x), Number(o.y), Number(o.w), Number(o.h));
+    }
+
+    if (t === "circle" && "cx" in o && "cy" in o && "r" in o) {
+      const d = 2 * Number(o.r);
+      return rectFromCenter(Number(o.cx), Number(o.cy), d, d);
+    }
+    if (t === "ellipse" && "cx" in o && "cy" in o && "rx" in o && "ry" in o) {
+      return rectFromCenter(Number(o.cx), Number(o.cy), 2*Number(o.rx), 2*Number(o.ry));
+    }
+    if (t === "rect" && ["x","y","w","h"].every(k => k in o)) {
+      return { x: Number(o.x), y: Number(o.y), w: Number(o.w), h: Number(o.h) };
+    }
+    if ((t === "polygon" || t === "polyline") && o.points) {
+      const pts = parsePoints(o);
+      if (pts) {
+        const bb = bboxFromPoints(pts);
+        return { x: bb.x, y: bb.y, w: bb.w, h: bb.h, _poly: { pts, wasString: typeof o.points === "string" } };
+      }
+    }
+
+    if (["x","y","w","h"].every(k => k in o)) {
+      return { x: Number(o.x), y: Number(o.y), w: Number(o.w), h: Number(o.h) };
+    }
+
+    return null;
+  }
+
+  function applyDragToObject(o, newCenter) {
+    const t = (o.type || o.shape || "").toLowerCase();
+
+    if ("primitive" in o && ["x","y","w","h"].every(k => k in o)) {
+      o.x = roundPretty(newCenter.cx);
+      o.y = roundPretty(newCenter.cy);
+      return;
+    }
+
+    if (t === "circle" && "cx" in o && "cy" in o) {
+      o.cx = roundPretty(newCenter.cx);
+      o.cy = roundPretty(newCenter.cy);
+      return;
+    }
+    if (t === "ellipse" && "cx" in o && "cy" in o) {
+      o.cx = roundPretty(newCenter.cx);
+      o.cy = roundPretty(newCenter.cy);
+      return;
+    }
+    if (t === "rect" && ["x","y","w","h"].every(k => k in o)) {
+      const w = Number(o.w), h = Number(o.h);
+      o.x = roundPretty(newCenter.cx - w/2);
+      o.y = roundPretty(newCenter.cy - h/2);
+      return;
+    }
+    if ((t === "polygon" || t === "polyline") && o.points) {
+      const pts = parsePoints(o);
+      if (pts) {
+        const bb = bboxFromPoints(pts);
+        const dx = newCenter.cx - bb.cx;
+        const dy = newCenter.cy - bb.cy;
+        const moved = pts.map(([x,y]) => [x + dx, y + dy]);
+        o.points = fmtPointsLike(o.points, moved);
+        return;
+      }
+    }
+
+    if (["x","y","w","h"].every(k => k in o)) {
+      const w = Number(o.w), h = Number(o.h);
+      o.x = roundPretty(newCenter.cx - w/2);
+      o.y = roundPretty(newCenter.cy - h/2);
+    }
+  }
+
+  function commitResizeToModel(obj, rectNode){
+    const x = px2u(+rectNode.getAttribute("x"));
+    const y = px2u(+rectNode.getAttribute("y"));
+    const w = px2u(+rectNode.getAttribute("width"));
+    const h = px2u(+rectNode.getAttribute("height"));
+    const cx = x + w/2, cy = y + h/2;
+    const t = (obj.type || obj.shape || "").toLowerCase();
+
+    if ("primitive" in obj && ["x","y","w","h"].every(k=>k in obj)){
+      obj.x = roundPretty(cx); obj.y = roundPretty(cy);
+      obj.w = roundPretty(w);  obj.h = roundPretty(h);
+      return;
+    }
+    if (t==="rect" && ["x","y","w","h"].every(k=>k in obj)){
+      obj.x = roundPretty(x); obj.y = roundPretty(y);
+      obj.w = roundPretty(w); obj.h = roundPretty(h);
+      return;
+    }
+    if (t==="circle" && "cx" in obj && "cy" in obj && "r" in obj){
+      const side = Math.min(w,h);
+      obj.cx = roundPretty(cx); obj.cy = roundPretty(cy);
+      obj.r  = roundPretty(side/2);
+      return;
+    }
+    if (t==="ellipse" && "cx" in obj && "cy" in obj && "rx" in obj && "ry" in obj){
+      obj.cx = roundPretty(cx); obj.cy = roundPretty(cy);
+      obj.rx = roundPretty(w/2); obj.ry = roundPretty(h/2);
+      return;
+    }
+    if ((t==="polygon"||t==="polyline") && obj.points){
+      const pts = parsePoints(obj); if (pts){
+        const bb = bboxFromPoints(pts), dx=cx-bb.cx, dy=cy-bb.cy;
+        const moved = pts.map(([px,py])=>[px+dx,py+dy]);
+        obj.points = fmtPointsLike(obj.points, moved);
+        return;
+      }
+    }
+    if (["x","y","w","h"].every(k=>k in obj)){
+      obj.x = roundPretty(x); obj.y = roundPretty(y);
+      obj.w = roundPretty(w); obj.h = roundPretty(h);
+    }
+  }
+
+  // ---------- Draw ----------
+  function draw() {
+    if (!model) {
+      stage.innerHTML = '<div class="hint" style="padding:10px">No JSON loaded yet.</div>';
+      return;
+    }
+    stage.innerHTML = "";
+
+    const Wpx = Math.max(50, Math.round(u2px(canvasW_units)));
+    const Hpx = Math.max(50, Math.round(u2px(canvasH_units)));
+
+    const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg = svgEl;
+    svg.setAttribute("width", Wpx);
+    svg.setAttribute("height", Hpx);
+    svg.setAttribute("viewBox", `0 0 ${Wpx} ${Hpx}`);
+    svg.style.display = "block";
+    svg.style.margin = "0 auto";
+
+    const defs = document.createElementNS(svg.namespaceURI, "defs");
+    const pattern = document.createElementNS(svg.namespaceURI, "pattern");
+    const stepPx = Math.max(2, u2px(gridStepUnits));
+    pattern.setAttribute("id", "grid");
+    pattern.setAttribute("width", stepPx);
+    pattern.setAttribute("height", stepPx);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", `M ${stepPx} 0 L 0 0 0 ${stepPx}`);
+    path.setAttribute("stroke", "#eee");
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
+
+    pattern.appendChild(path);
+    defs.appendChild(pattern);
+    svg.appendChild(defs);
+
+    const gridRect = document.createElementNS(svg.namespaceURI, "rect");
+    gridRect.setAttribute("x", 0);
+    gridRect.setAttribute("y", 0);
+    gridRect.setAttribute("width", Wpx);
+    gridRect.setAttribute("height", Hpx);
+    gridRect.setAttribute("fill", "url(#grid)");
+    svg.appendChild(gridRect);
+
+    gContent = document.createElementNS(svg.namespaceURI, "g");
+    svg.appendChild(gContent);
+
+    const objs = Array.isArray(model.objects)
+      ? model.objects.map((o,i)=>({ __key: String(o.label||o.id||`OBJ_${i+1}`).toUpperCase(), ...o }))
+      : Object.entries(model.objects || {}).map(([id, o]) => ({ __key: String(id).toUpperCase(), id, label: o.label || id, ...o }));
+
+    objs.forEach((o, idx) => {
+      const disp = objectToDisplayRect(o);
+      if (!disp) return;
+
+      const cx = disp.x + disp.w/2;
+      const cy = disp.y + disp.h/2;
+
+      const g = document.createElementNS(svg.namespaceURI, "g");
+      g.classList.add("obj");
+      g.dataset.index = String(idx);
+
+      const r = document.createElementNS(svg.namespaceURI, "rect");
+      r.setAttribute("x", u2px(disp.x));
+      r.setAttribute("y", u2px(disp.y));
+      r.setAttribute("width", u2px(disp.w));
+      r.setAttribute("height", u2px(disp.h));
+      r.setAttribute("rx", 4);
+      r.setAttribute("fill", "var(--obj-fill)");
+      r.setAttribute("stroke", "var(--obj-stroke)");
+      r.setAttribute("stroke-width", 1.2);
+      g.appendChild(r);
+
+      const label = document.createElementNS(svg.namespaceURI, "text");
+      label.textContent = o.label || o.id || "OBJ";
+      label.setAttribute("x", u2px(cx));
+      label.setAttribute("y", u2px(cy));
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("dominant-baseline", "middle");
+      label.setAttribute("font-size", "12");
+      label.setAttribute("fill", "var(--label)");
+      g.appendChild(label);
+
+      addDrag(g, r, label, o.__key);
+      addResizeHandles(g, r, label, o.__key);
+
+
+      gContent.appendChild(g);
+    });
+
+    stage.appendChild(svg);
+  }
+
+  // ---------- Drag ----------
+  function addDrag(group, rectNode, labelNode, keyU) {
+    let dragging = false;
+    let startPtr = null;
+    let startCenter = null;
+
+    const getCenter = () => {
+      const x_px = +rectNode.getAttribute("x");
+      const y_px = +rectNode.getAttribute("y");
+      const w_px = +rectNode.getAttribute("width");
+      const h_px = +rectNode.getAttribute("height");
+      return { cx: px2u(x_px + w_px/2), cy: px2u(y_px + h_px/2) };
+    };
+
+    group.addEventListener("pointerdown", (e) => {
+      if (e.target.classList.contains("handle")) return;
+      dragging = true;
+      group.setPointerCapture(e.pointerId);
+      startPtr = { x: e.clientX, y: e.clientY };
+      startCenter = getCenter();
+    });
+
+    group.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx_px = e.clientX - startPtr.x;
+      const dy_px = e.clientY - startPtr.y;
+      const cx = snap(startCenter.cx + px2u(dx_px), gridStepUnits);
+      const cy = snap(startCenter.cy + px2u(dy_px), gridStepUnits);
+
+      const w_units = px2u(+rectNode.getAttribute("width"));
+      const h_units = px2u(+rectNode.getAttribute("height"));
+
+      const tlx = cx - w_units/2;
+      const tly = cy - h_units/2;
+
+      rectNode.setAttribute("x", u2px(tlx));
+      rectNode.setAttribute("y", u2px(tly));
+      labelNode.setAttribute("x", u2px(cx));
+      labelNode.setAttribute("y", u2px(cy));
+      layoutHandles(group, rectNode);
+    });
+
+    group.addEventListener("pointerup", (e) => {
+      if (!dragging) return;
+      dragging = false;
+      group.releasePointerCapture(e.pointerId);
+      const now = getCenter();
+      writeRectToModel(keyU, rectNode, { cx: snap(now.cx, gridStepUnits), cy: snap(now.cy, gridStepUnits) });
+      syncJsonPane();
+      publishLiveSyncDebounced();
+
+    });
+  }
+
+  // ---------- Resize ----------
+  function addResizeHandles(group, rectNode, labelNode, keyU) {
+    const ns = rectNode.namespaceURI, size = 8;
+    const defs = [
+      {k:"nw",cls:"corner"}, {k:"ne",cls:"corner"},
+      {k:"se",cls:"corner"}, {k:"sw",cls:"corner"},
+      {k:"n",cls:"v-edge"}, {k:"s",cls:"v-edge"},
+      {k:"e",cls:"h-edge"}, {k:"w",cls:"h-edge"},
+    ];
+
+    const handles = defs.map(d => {
+      const r = document.createElementNS(ns, "rect");
+      r.setAttribute("width", size);
+      r.setAttribute("height", size);
+      r.setAttribute("class", "handle " + d.cls);
+      r.dataset.mode = d.k;
+      group.appendChild(r);
+      r.addEventListener("pointerdown", ev => startResize(ev, d.k));
+      return r;
+    });
+
+    function layout() {
+      const x = +rectNode.getAttribute("x");
+      const y = +rectNode.getAttribute("y");
+      const w = +rectNode.getAttribute("width");
+      const h = +rectNode.getAttribute("height");
+      const cx = x + w/2, cy = y + h/2;
+
+      const pos = {
+        nw:[x,y], ne:[x+w,y], se:[x+w,y+h], sw:[x,y+h],
+        n:[cx,y], s:[cx,y+h], e:[x+w,cy], w:[x,cy]
+      };
+      handles.forEach(hn => {
+        const k = hn.dataset.mode, [hx,hy] = pos[k];
+        hn.setAttribute("x", hx - size/2);
+        hn.setAttribute("y", hy - size/2);
+      });
+    }
+    layout();
+    group.__layoutHandles = layout;
+
+    let pointerId = null, start = null;
+    function startResize(e, mode) {
+      e.stopPropagation();
+      pointerId = e.pointerId;
+      group.setPointerCapture(pointerId);
+      start = {
+        mode,
+        x: +rectNode.getAttribute("x"),
+        y: +rectNode.getAttribute("y"),
+        w: +rectNode.getAttribute("width"),
+        h: +rectNode.getAttribute("height"),
+        cx: e.clientX, cy: e.clientY
+      };
+      group.addEventListener("pointermove", onMove);
+      group.addEventListener("pointerup", onEnd, { once: true });
+    }
+
+    function onMove(e) {
+      const dx_px = e.clientX - start.cx;
+      const dy_px = e.clientY - start.cy;
+
+      let x = px2u(start.x), y = px2u(start.y);
+      let w = px2u(start.w), h = px2u(start.h);
+      const dx = dx_px / pxPerUnit;
+      const dy = dy_px / pxPerUnit;
+
+      const left = () => { const W = clampSize(snap(w - dx, gridStepUnits)); x += (w - W); w = W; };
+      const right= () => { w = clampSize(snap(w + dx, gridStepUnits)); };
+      const top  = () => { const H = clampSize(snap(h - dy, gridStepUnits)); y += (h - H); h = H; };
+      const bot  = () => { h = clampSize(snap(h + dy, gridStepUnits)); };
+
+      if (start.mode==="nw"){ left(); top(); }
+      if (start.mode==="ne"){ right(); top(); }
+      if (start.mode==="se"){ right(); bot(); }
+      if (start.mode==="sw"){ left(); bot(); }
+      if (start.mode==="n"){ top(); }
+      if (start.mode==="s"){ bot(); }
+      if (start.mode==="e"){ right(); }
+      if (start.mode==="w"){ left(); }
+
+      const t = (() => {
+        if (!model || !model.objects) return "";
+        // ensure dict form
+        const objs = Array.isArray(model.objects) ? normalizeForPublish(model).objects : model.objects;
+        const base = objs[String(keyU).toUpperCase()] || {};
+        return String(base.type || base.shape || (base.primitive && base.primitive!=="cube" ? base.primitive : "")).toLowerCase();
+      })();
+
+      if (t === "circle") {
+        const side = Math.min(w, h);
+        const cx = x + w/2, cy = y + h/2;
+        w = h = clampSize(snap(side, gridStepUnits));
+        x = cx - w/2; y = cy - h/2;
+      }
+
+      rectNode.setAttribute("x", u2px(x));
+      rectNode.setAttribute("y", u2px(y));
+      rectNode.setAttribute("width", u2px(w));
+      rectNode.setAttribute("height", u2px(h));
+
+      const cxu = x + w/2, cyu = y + h/2;
+      labelNode.setAttribute("x", u2px(cxu));
+      labelNode.setAttribute("y", u2px(cyu));
+      layout();
+    }
+
+    function onEnd() {
+      group.releasePointerCapture(pointerId);
+      writeRectToModel(keyU, rectNode);
+      syncJsonPane();
+      publishLiveSyncDebounced();
+      group.removeEventListener("pointermove", onMove);
+    }
+  }
+
+  function layoutHandles(group, rectNode){
+    if (group && typeof group.__layoutHandles === "function"){
+      group.__layoutHandles();
+    }
+  }
+  function writeRectToModel(keyU, rectNode, optCenter){
+    if (!model) return;
+
+    // ensure dict form for objects
+    if (Array.isArray(model.objects)) {
+      model.objects = normalizeForPublish(model).objects;
+    }
+
+    const k = String(keyU).toUpperCase();
+    const x = px2u(+rectNode.getAttribute("x"));
+    const y = px2u(+rectNode.getAttribute("y"));
+    const w = px2u(+rectNode.getAttribute("width"));
+    const h = px2u(+rectNode.getAttribute("height"));
+    const cx = optCenter ? optCenter.cx : (x + w/2);
+    const cy = optCenter ? optCenter.cy : (y + h/2);
+
+    const base = model.objects[k] || {};
+    model.objects[k] = {
+      ...base,
+      primitive: base.primitive || "cube",
+      x: roundPretty(cx),
+      y: roundPretty(cy),
+      w: roundPretty(w),
+      h: roundPretty(h),
+    };
+  }
+
+  // ---------- Load Model ----------
+  function loadModel(plan) {
+    model = plan;
+    detectUnitsAndCanvas(model);
+
+    model.version = model.version || "1.0";
+    model.units = model.units || (units === "m" ? "m" : "px");
+    model.canvas = model.canvas || (units === "m"
+      ? { width_m: canvasW_units, height_m: canvasH_units, origin: "top-left" }
+      : { width: canvasW_units, height: canvasH_units, origin: "top-left" });
+    model.grid_size_m = (typeof model.grid_size_m === "number")
+      ? model.grid_size_m
+      : (units === "m" ? 0.5 : model.grid_size_m);
+
+    draw();
+  }
+
+  // ---------- Demo default ----------
+  const demo = {
+    "version": "1.0",
+    "units": "m",
+    "grid_size_m": 0.5,
+    "canvas": { "width_m": 60.0, "height_m": 40.0, "origin": "top-left" },
+    "meta": { "approx_scale_bar": { "length_px": 100, "label": "~1 m (approx.)" } },
+    "objects": [
+      { "id": "castle_ruin", "label": "CASTLE_RUIN", "primitive": "cube", "x": 30.0, "y": 5.0,  "w": 13.0, "h": 4.5, "height": 6.0 },
+      { "id": "forest_w",    "label": "FOREST_W",    "primitive": "cube", "x": 10.0, "y": 12.0, "w": 14.0, "h": 12.0, "height": 12.0 },
+      { "id": "forest_e",    "label": "FOREST_E",    "primitive": "cube", "x": 50.0, "y": 12.0, "w": 14.0, "h": 12.0, "height": 12.0 },
+      { "type": "circle", "id": "pool", "label": "POOL", "cx": 30, "cy": 28, "r": 3.5 },
+      { "type": "rect", "id": "shed", "label": "SHED", "x": 25.5, "y": 27.5, "w": 4.0, "h": 3.0 },
+      { "type": "polygon", "id": "rocky", "label": "ROCKY", "points": "5,33 7,31 9,33 8,36 6,36" }
+    ]
+  };
+  jsonIn.value = JSON.stringify(demo, null, 2);
+  loadModel(demo);
+
+  window.addEventListener("error", (e) => {
+    liveHintEl.textContent = "JS error: " + (e.message || e.error);
+  });
+})();
+</script>
+</body>
+</html>
