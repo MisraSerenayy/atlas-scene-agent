@@ -36,7 +36,7 @@ The workflow shows how an AI-generated render is converted into structured desig
 <img width="1733" height="908" alt="Ekran görüntüsü 2025-10-23 132121" src="https://github.com/user-attachments/assets/2339512e-a090-4bf7-b0c9-d33776cd93d0" />
 <p align="center">
   <br>
-  <em>Interface</em>
+  <em>Interface showing top view abstraction of Interior Scene (Example2)</em>
 </p>
 
 ---
