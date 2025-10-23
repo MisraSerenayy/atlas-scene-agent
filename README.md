@@ -133,10 +133,11 @@ Click Publish to write live_scene.json and preview the scene in Blender.
 
 ## 🎥 Demo
 
+
+https://github.com/user-attachments/assets/10edf0c1-89fa-496c-a454-b7e81f00557a
+
+
 <p align="center">
-  <video src="screenshots/demo.mp4" width="800" controls muted loop>
-    Your browser does not support the video tag.
-  </video>
   <br>
   <em>Real-time 2D layout editor with AI-assisted scene generation and Blender live-sync.</em>
 </p>
