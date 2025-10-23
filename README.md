@@ -130,7 +130,7 @@ You can paste a JSON from the examples folder and edit the scene by dragging or 
 ### 6. Blender live-sync
 Run blender_livesync.py inside Blender’s scripting panel.
 Any change in live_scene.json updates the 3D view automatically.
-
+---
 
 🧪 Example Demo
 
@@ -148,7 +148,7 @@ To try the included demo:
 
 6. Click Publish to write live_scene.json and preview the scene in Blender.
 
-
+---
 
 🪄 Roadmap
 
@@ -160,7 +160,7 @@ To try the included demo:
 
  Multi-user collaboration and persistent history.
 
-
+---
 
 Credits
 
