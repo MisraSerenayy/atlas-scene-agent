@@ -39,6 +39,12 @@ The workflow shows how an AI-generated render is converted into structured desig
   <em>Interface showing top view abstraction of Interior Scene (Example2)</em>
 </p>
 
+![ATLAS - Frame 11](https://github.com/user-attachments/assets/422997c0-c1ec-4c25-b2cb-e2d5f70c1749)
+<p align="center">
+  <br>
+  <em>Trial with ATLAS nodes</em>
+</p>
+
 ---
 
 🧩 Current Functionality (MVP)
